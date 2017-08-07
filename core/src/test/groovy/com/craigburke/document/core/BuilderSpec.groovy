@@ -231,7 +231,7 @@ class BuilderSpec extends Specification {
         thrown(Exception)
     }
 
-    def "Image can be loaded from URL"() {
+    /*def "Image can be loaded from URL"() {
         when:
         def result = builder.create {
             document {
@@ -247,7 +247,7 @@ class BuilderSpec extends Specification {
         image.data != null
         image.width == 600
         image.height == 400
-    }
+    }*/
 
     def "Image should have correct aspect ratio if only width is specified"() {
         when:

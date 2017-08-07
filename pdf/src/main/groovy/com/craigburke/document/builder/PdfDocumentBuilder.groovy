@@ -130,7 +130,8 @@ class PdfDocumentBuilder extends DocumentBuilder {
 
         def renderer
         if (headerFooter instanceof TextBlock) {
-            renderer = new ParagraphRenderer(headerFooter, pdfDocument, startX, document.width)
+            int pageWidth = document.width - document.margin.left - document.margin.right
+            renderer = new ParagraphRenderer(headerFooter, pdfDocument, startX, pageWidth)
         } else {
             renderer = new TableRenderer(headerFooter as Table, pdfDocument, startX)
         }

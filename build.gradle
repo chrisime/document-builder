@@ -60,67 +60,6 @@ subprojects {
         from 'build/docs/javadoc'
     }
 
-    afterEvaluate { Project project ->
-        bintray {
-            user = project.hasProperty('bintrayUsername') ? project.bintrayUsername : ''
-            key = project.hasProperty('bintrayApiKey') ? project.bintrayApiKey : ''
-            publications = ['maven']
-            publish = true
-
-            pkg {
-                repo = 'document-builder'
-                userOrg = 'craigburke'
-                name = project.artifactId
-                githubRepo = project.githubUrl
-                githubReleaseNotesFile = 'README.adoc'
-                version {
-                    mavenCentralSync {
-                        user = project.hasProperty('mavenCentralUsername') ? project.mavenCentralUsername : ''
-                        password = project.hasProperty('mavenCentralPassword') ? project.mavenCentralPassword : ''
-                    }
-                }
-            }
-        }
-
-        publishing {
-            publications {
-                maven(MavenPublication) {
-                    artifactId project.artifactId
-                    pom.withXml {
-                        asNode().children().last() + {
-                            resolveStrategy = Closure.DELEGATE_FIRST
-                            name project.artifactId
-                            description project.description
-                            url project.githubUrl
-                            scm {
-                                url project.githubUrl
-                                connection "scm:${project.githubUrl}.git"
-                                developerConnection "scm:${project.githubUrl}.git"
-                            }
-                            licenses {
-                                license {
-                                    name 'Mozilla Public License, Version 2.0'
-                                    url 'https://www.mozilla.org/MPL/2.0/'
-                                    distribution 'repo'
-                                }
-                            }
-                            developers {
-                                developer {
-                                    id 'craigburke'
-                                    name 'Craig Burke'
-                                    email 'craig@craigburke.com'
-                                }
-                            }
-                        }
-                    }
-                    from components.java
-                    artifact sourcesJar
-                    artifact javadocJar
-                }
-            }
-        }
-    }
-
     task release {
         dependsOn bintrayUpload, publishGhPages
     }
