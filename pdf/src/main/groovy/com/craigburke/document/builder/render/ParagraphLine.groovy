@@ -45,8 +45,7 @@ class ParagraphLine {
                     .findAll { it instanceof TextElement }
                     .max { it.node.font.size }?.node?.font ?: paragraph.font
 
-            BigDecimal xHeight = PdfFont.getXHeight(maxFont)
-            Math.round((maxFont.size - xHeight) * paragraph.lineSpacingMultiplier)
+            Math.round(maxFont.size - (maxFont.size * paragraph.lineSpacingMultiplier))
         }
     }
 
