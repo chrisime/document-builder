@@ -47,9 +47,9 @@ class PdfFont {
         pdfFont
     }
 
-    static BigDecimal getXHeight(Font font) {
+    static BigDecimal getLineHeight(Font font) {
         PDFont pdFont = PdfFont.getFont(font)
-        (font.size * pdFont.getHeight('x'.bytes[0]) / 1000f)
+        return pdFont.getBoundingBox().height / 1000 * font.size;
     }
 
     static void addFont(PDDocument document, EmbeddedFont embeddedFont) {
