@@ -124,7 +124,7 @@ class PdfDocumentBuilder extends DocumentBuilder {
         if (renderState == RenderState.HEADER) {
             startY = headerFooter.margin.top
         } else {
-            float pageBottom = pdfDocument.pageBottomY - document.margin.bottom
+            float pageBottom = pdfDocument.pageBottomY + document.margin.bottom
             startY = pageBottom - getElementHeight(headerFooter) - headerFooter.margin.bottom
         }
 
@@ -141,7 +141,7 @@ class PdfDocumentBuilder extends DocumentBuilder {
     }
 
     private float getElementHeight(element) {
-        float width = document.width - document.margin.top - document.margin.bottom
+        float width = document.width - document.margin.right - document.margin.left
 
         if (element instanceof TextBlock) {
             new ParagraphRenderer(element, pdfDocument, 0, width).totalHeight
