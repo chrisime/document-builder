@@ -15,7 +15,7 @@ class PdfFont {
 
     private static final DEFAULT_FONT = PDType1Font.HELVETICA
 
-    private static fonts = [
+    private static Map<String, Map<String,PDType1Font>> fonts = [
             'Times-Roman': [regular: PDType1Font.TIMES_ROMAN, bold: PDType1Font.TIMES_BOLD,
                             italic : PDType1Font.TIMES_ITALIC, boldItalic: PDType1Font.TIMES_BOLD_ITALIC],
             'Helvetica'  : [regular: PDType1Font.HELVETICA, bold: PDType1Font.HELVETICA_BOLD,
@@ -48,18 +48,12 @@ class PdfFont {
     }
 
     static BigDecimal getLineHeight(Font font) {
-        PDFont pdFont = PdfFont.getFont(font)
-        return pdFont.getBoundingBox().height / 1000 * font.size;
+        getFont(font).getBoundingBox().height / 1000 * font.size
     }
 
     static void addFont(PDDocument document, EmbeddedFont embeddedFont) {
-        PDFont font = null
-        if (embeddedFont.file) {
-            font = PDType0Font.load(document, embeddedFont.file)
-        }
-        else {
-            font = PDType0Font.load(document, embeddedFont.inputStream)
-        }
+        PDFont font = embeddedFont.file ? PDType0Font.load(document, embeddedFont.file)
+                                        : PDType0Font.load(document, embeddedFont.inputStream)
         String fontName = embeddedFont.name ?: font.baseFont
 
         fonts[fontName] = fonts[fontName] ?: [:]

@@ -14,7 +14,7 @@ class CellRenderer implements Renderable {
     float currentRowHeight = 0
     float renderedHeight = 0
 
-    Cell cell
+    Cell             cell
     List<Renderable> childRenderers = []
 
     CellRenderer(Cell cell, PdfDocument pdfDocument, float startX) {
@@ -24,7 +24,7 @@ class CellRenderer implements Renderable {
 
         Table table = cell.parent.parent
         int renderWidth = cell.width - (table.padding * 2)
-        float childStartX = startX + table.padding
+        float childStartX = (startX + table.padding).floatValue()
         cell.children.each { child ->
             if (child instanceof TextBlock) {
                 childRenderers << new ParagraphRenderer(child, pdfDocument, childStartX, renderWidth)
@@ -91,10 +91,10 @@ class CellRenderer implements Renderable {
     }
 
     void parse(float height) {
-        if (height < 0) {
+        if (height < 0)
             return
-        }
-        float parseHeight = height - padding
+
+        float parseHeight = (height - padding).floatValue()
         childRenderers*.parse(parseHeight)
     }
 

@@ -1,9 +1,7 @@
 package com.craigburke.document.core.factory
 
-import com.craigburke.document.core.BaseNode
 import com.craigburke.document.core.Link
 import com.craigburke.document.core.TextBlock
-import com.craigburke.document.core.Text
 
 /**
  * Factory for link nodes
@@ -11,18 +9,17 @@ import com.craigburke.document.core.Text
  */
 class LinkFactory extends AbstractFactory {
 
-    boolean isLeaf() { true }
+    boolean isLeaf() {
+        true
+    }
 
-    boolean onHandleNodeAttributes(FactoryBuilderSupport builder, node, Map attributes) { false }
+    boolean onHandleNodeAttributes(FactoryBuilderSupport builder, node, Map attributes) {
+        false
+    }
 
     def newInstance(FactoryBuilderSupport builder, name, value, Map attributes) {
-        TextBlock paragraph
-
-        if (builder.parentName == 'paragraph') {
-            paragraph = builder.current
-        } else {
-            paragraph = builder.getColumnParagraph(builder.current)
-        }
+        TextBlock paragraph = builder.parentName == 'paragraph' ? builder.current
+                                                                : builder.getColumnParagraph(builder.current)
 
         String text = attributes.value ?: value
         String url = attributes.url ?: value

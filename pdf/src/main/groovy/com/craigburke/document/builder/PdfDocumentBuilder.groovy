@@ -24,7 +24,7 @@ import org.apache.pdfbox.pdmodel.common.PDMetadata
 @InheritConstructors
 class PdfDocumentBuilder extends DocumentBuilder {
 
-    PdfDocument pdfDocument
+    PdfDocument pdfdocument
 
     void initializeDocument(Document document, OutputStream out) {
         pdfDocument = new PdfDocument(document)
@@ -181,12 +181,12 @@ class PdfDocumentBuilder extends DocumentBuilder {
         catalog.metadata = metadata
     }
 
-    private void addParagraphToMetadata(builder, TextBlock paragraphNode) {
+    private static void addParagraphToMetadata(builder, TextBlock paragraphNode) {
         builder.paragraph(marginTop: "${paragraphNode.margin.top}",
                 marginBottom: "${paragraphNode.margin.bottom}",
                 marginLeft: "${paragraphNode.margin.left}",
                 marginRight: "${paragraphNode.margin.right}") {
-            paragraphNode.children?.findAll { it.getClass() == Image }.each {
+            paragraphNode?.children.findAll { it.class == Image }.each {
                 builder.image()
             }
         }

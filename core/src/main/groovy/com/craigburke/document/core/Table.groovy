@@ -25,7 +25,7 @@ class Table extends BlockNode implements BackgroundAssignable {
 
         width = Math.min(width ?: maxWidth, maxWidth)
         if (!columns) {
-            columnCount.times { columns << 1 }
+            columnCount.times { columns << 1.0G }
         }
 
         List<BigDecimal> columnWidths = computeColumnWidths()
@@ -43,7 +43,7 @@ class Table extends BlockNode implements BackgroundAssignable {
     }
 
     List<BigDecimal> computeColumnWidths() {
-        BigDecimal relativeTotal = columns.sum()
+        BigDecimal relativeTotal = columns.sum() as BigDecimal
         BigDecimal totalBorderWidth = (columnCount + 1) * border.size
         BigDecimal totalCellWidth = width - totalBorderWidth
 

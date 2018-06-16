@@ -22,7 +22,7 @@ class RowRenderer implements Renderable {
         this.pdfDocument = pdfDocument
 
         Table table = row.parent
-        float columnX = startX + table.border.size
+        float columnX = (startX + table.border.size).floatValue()
         row.children.each { Cell column ->
             cellRenderers << new CellRenderer(column, pdfDocument, columnX)
             columnX += column.width + table.border.size
@@ -43,7 +43,7 @@ class RowRenderer implements Renderable {
     }
 
     float getParsedHeight() {
-        float parsedHeight = cellRenderers*.parsedHeight.max() ?: 0
+        float parsedHeight = (float) cellRenderers*.parsedHeight.max() ?: 0.0F
         if (fullyParsed && parsedHeight > 0) {
             parsedHeight += table.border.size
         }
@@ -70,7 +70,7 @@ class RowRenderer implements Renderable {
     }
 
     private void renderBackgrounds(float startY) {
-        float backgroundStartY = startY + parsedHeight
+        float backgroundStartY = (startY + parsedHeight).floatValue()
         if (!firstRow) {
             backgroundStartY += tableBorderOffset
         }
@@ -86,9 +86,9 @@ class RowRenderer implements Renderable {
             if (column.background) {
                 boolean isLastColumn = (column == column.parent.children.last())
                 contentStream.setNonStrokingColor(*column.background.rgb)
-                float startX = columnElement.startX - tableBorderOffset
-                float width = column.width + (isLastColumn ? table.border.size : tableBorderOffset)
-                float height = parsedHeight - (fullyParsed ? 0 : tableBorderOffset)
+                float startX = (columnElement.startX - tableBorderOffset).floatValue()
+                float width = (column.width + (isLastColumn ? table.border.size : tableBorderOffset)).floatValue()
+                float height = (parsedHeight - (fullyParsed ? 0 : tableBorderOffset)).floatValue()
                 height += ((fullyParsed && !onFirstPage) ? table.border.size : 0)
                 contentStream.addRect(startX, translatedStartY, width, height)
                 contentStream.fill()
@@ -103,8 +103,8 @@ class RowRenderer implements Renderable {
 
         float translatedYTop = pdfDocument.translateY(startY - tableBorderOffset)
         float translatedYBottom = pdfDocument.translateY(startY + parsedHeight)
-        float rowStartX = startX - tableBorderOffset
-        float rowEndX = startX + table.width.floatValue()
+        float rowStartX = (startX - tableBorderOffset).floatValue()
+        float rowEndX = (startX + table.width).floatValue()
 
         PDPageContentStream contentStream = pdfDocument.contentStream
         setBorderOptions(contentStream)
@@ -117,13 +117,13 @@ class RowRenderer implements Renderable {
 
         cellRenderers.eachWithIndex { columnElement, i ->
             if (i == 0) {
-                float firstLineStartX = columnElement.startX - table.border.size
+                float firstLineStartX = (columnElement.startX - table.border.size).floatValue()
                 contentStream.moveTo(firstLineStartX, translatedYTop)
                 contentStream.lineTo(firstLineStartX, translatedYBottom)
                 contentStream.stroke()
             }
-            float columnStartX = columnElement.startX - table.border.size
-            float columnEndX = columnElement.startX + columnElement.cell.width + tableBorderOffset
+            float columnStartX = (columnElement.startX - table.border.size).floatValue()
+            float columnEndX = (columnElement.startX + columnElement.cell.width + tableBorderOffset).floatValue()
 
             contentStream.moveTo(columnEndX, translatedYTop)
             contentStream.lineTo(columnEndX, translatedYBottom)

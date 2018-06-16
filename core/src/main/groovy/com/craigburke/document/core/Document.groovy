@@ -13,8 +13,8 @@ class Document extends BlockNode {
     private static final String LANDSCAPE = 'landscape'
 
     int pageCount
-    int width = inchToPoint(PaperSize.LETTER.width)
-    int height = inchToPoint(PaperSize.LETTER.height)
+    int width = inchToPoint(PaperSize.LETTER.width).toInteger()
+    int height = inchToPoint(PaperSize.LETTER.height).toInteger()
     String orientation = PORTRAIT
 
     def template
@@ -42,7 +42,7 @@ class Document extends BlockNode {
         }
     }
 
-    List children = []
+    List<BlockNode> children = []
     List<EmbeddedFont> embeddedFonts = []
 
     /**
@@ -60,8 +60,8 @@ class Document extends BlockNode {
      * @param arg a Dimension instance
      */
     void setSize(Dimension arg) {
-        width = inchToPoint(arg.width)
-        height = inchToPoint(arg.height)
+        width = inchToPoint(arg.width).toInteger()
+        height = inchToPoint(arg.height).toInteger()
     }
 
     /**
@@ -70,8 +70,8 @@ class Document extends BlockNode {
      * @param args width, height
      */
     void setSize(List<Number> args) {
-        width = args[0]
-        height = args[1]
+        width = args[0].toInteger()
+        height = args[1].toInteger()
     }
 
     /**

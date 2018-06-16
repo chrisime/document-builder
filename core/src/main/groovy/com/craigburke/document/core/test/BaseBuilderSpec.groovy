@@ -2,6 +2,7 @@ package com.craigburke.document.core.test
 
 import com.craigburke.document.core.builder.DocumentBuilder
 import com.craigburke.document.core.Document
+import spock.lang.IgnoreIf
 import spock.lang.Specification
 import spock.lang.Shared
 import spock.lang.Unroll
@@ -17,7 +18,7 @@ abstract class BaseBuilderSpec extends Specification {
     @Shared
     DocumentBuilder builder
     @Shared
-    byte[] imageData = getClass().classLoader.getResource('test/images/cheeseburger.jpg')?.bytes
+    byte[] imageData = BaseBuilderSpec.class.classLoader.getResource('cheeseburger.jpg')?.bytes
 
     @Shared
             testMargins = [

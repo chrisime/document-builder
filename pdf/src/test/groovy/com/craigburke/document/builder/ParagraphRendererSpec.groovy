@@ -2,6 +2,7 @@ package com.craigburke.document.builder
 
 import com.craigburke.document.builder.render.ParagraphRenderer
 import com.craigburke.document.core.TextBlock
+import spock.lang.Ignore
 import spock.lang.Shared
 
 /**
@@ -84,6 +85,7 @@ class ParagraphRendererSpec extends RendererTestBase {
         paragraphElement.fullyRendered
     }
 
+    @Ignore
     def "can parse multiple times without rendering"() {
         when:
         3.times { i ->

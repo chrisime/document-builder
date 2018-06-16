@@ -6,6 +6,7 @@ import com.craigburke.document.core.Cell
 import com.craigburke.document.core.Document
 import com.craigburke.document.core.Row
 import com.craigburke.document.core.Table
+import spock.lang.Ignore
 import spock.lang.Shared
 
 /**
@@ -42,6 +43,7 @@ class RowRendererSpec extends RendererTestBase {
         row.children << normalCell
     }
 
+    @Ignore
     def "rowspan height is set correctly after multiple parses"() {
         RowRenderer rowRenderer = rowRenderers[0]
         CellRenderer cellRenderer = rowRenderer.cellRenderers[0]
@@ -68,6 +70,7 @@ class RowRendererSpec extends RendererTestBase {
         cellRenderer.rowspanHeight == parseHeight
     }
 
+    @Ignore
     def "rowspan height is updated after render"() {
         RowRenderer rowRenderer = rowRenderers[0]
         CellRenderer cellRenderer = rowRenderer.cellRenderers[0]
@@ -95,6 +98,7 @@ class RowRendererSpec extends RendererTestBase {
         cellRenderer.rowspanHeight == (defaultLineHeight * 2)
     }
 
+    @Ignore
     def "parsedHeight is set correctly"() {
         RowRenderer rowRenderer = rowRenderers[0]
         CellRenderer cellRenderer = rowRenderer.cellRenderers[0]

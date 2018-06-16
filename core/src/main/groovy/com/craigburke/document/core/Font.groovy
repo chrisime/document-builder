@@ -6,7 +6,7 @@ package com.craigburke.document.core
  */
 class Font implements ColorAssignable, Cloneable {
     String family = 'Helvetica'
-    BigDecimal size = 12
+    BigDecimal size = 12.0G
     Boolean bold = false
     Boolean italic = false
     Boolean underline = false

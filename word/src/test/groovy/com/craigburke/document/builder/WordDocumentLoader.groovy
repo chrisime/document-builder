@@ -49,7 +49,7 @@ class WordDocumentLoader {
                     Cell column = new Cell(element: columnItem, parent: row)
                     int padding = columnItem.CTTc.tcPr.tcMar.left.w
                     int width = columnItem.CTTc.tcPr.tcW.w
-                    column.width = twipToPoint(width + (padding * 2))
+                    column.width = twipToPoint(width + (padding * 2) as BigDecimal).toInteger()
 
                     column.children = getParagraphs(columnItem.paragraphs)
 
@@ -70,8 +70,8 @@ class WordDocumentLoader {
                 p.margin.bottom = twipToPoint(paragraph.spacingAfter)
                 p.margin.top = twipToPoint(paragraph.spacingBefore)
                 def indent = paragraph.CTP.PPr.ind
-                p.margin.left = twipToPoint(indent?.left ?: 0)
-                p.margin.right = twipToPoint(indent?.right ?: 0)
+                p.margin.left = twipToPoint(indent?.left ?: 0 as BigDecimal).toInteger()
+                p.margin.right = twipToPoint(indent?.right ?: 0 as BigDecimal).toInteger()
 
                 items << p
 

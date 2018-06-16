@@ -11,8 +11,8 @@ class PaperSize {
     static final Dimension A4 = new Dimension(8.27, 11.7)
     static final Dimension A5 = new Dimension(5.83, 8.27)
     static final Dimension A6 = new Dimension(4.13, 5.83)
-    static final Dimension LETTER = new Dimension(8.5, 11)
-    static final Dimension LEGAL = new Dimension(8.5, 14)
+    static final Dimension LETTER = new Dimension(8.5, 11.0)
+    static final Dimension LEGAL = new Dimension(8.5, 14.0)
 
     static Dimension get(String name) {
         switch (name.toLowerCase()) {

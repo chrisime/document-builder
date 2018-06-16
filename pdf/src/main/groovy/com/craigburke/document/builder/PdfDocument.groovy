@@ -3,8 +3,8 @@ package com.craigburke.document.builder
 import com.craigburke.document.core.Document
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
-import org.apache.pdfbox.pdmodel.common.PDRectangle
 import org.apache.pdfbox.pdmodel.PDPageContentStream
+import org.apache.pdfbox.pdmodel.common.PDRectangle
 
 /**
  * Document node element
@@ -15,12 +15,12 @@ class PdfDocument {
     float x = 0
     float y = 0
 
-    Document document
+    Document   document
     PDDocument pdDocument
-    int pageNumber = 0
+    int        pageNumber = 0
 
     PDPageContentStream contentStream
-    List<PDPage> pages = []
+    List<PDPage>        pages = []
 
     PdfDocument(Document document) {
         pdDocument = new PDDocument()
@@ -37,16 +37,20 @@ class PdfDocument {
         currentPage.mediaBox.height - document.margin.bottom
     }
 
-    private PDRectangle getRectangle(BigDecimal width, BigDecimal height) {
+    private static PDRectangle getRectangle(float width, float height) {
         new PDRectangle(width.floatValue(), height.floatValue())
     }
 
     void addPage() {
-        def newPage = new PDPage()
-        newPage.setMediaBox(getRectangle(document.width, document.height))
-        if(document.isLandscape()) {
+        def newPage = new PDPage().with {
+            setMediaBox(getRectangle(document.width, document.height))
+            it
+        }
+
+        if (document.isLandscape()) {
             newPage.setRotation(90)
         }
+
         pages << newPage
         pageNumber++
 
@@ -74,11 +78,10 @@ class PdfDocument {
 
     void scrollDownPage(float amount) {
         if (remainingPageHeight < amount) {
-            float amountDiff = amount - remainingPageHeight
+            float amountDiff = (amount - remainingPageHeight).floatValue()
             addPage()
             y += amountDiff
-        }
-        else {
+        } else {
             y += amount
         }
 

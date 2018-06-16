@@ -10,10 +10,10 @@ import com.craigburke.document.core.TextBlock
  */
 class ParagraphLine {
 
-    TextBlock paragraph
-    final float maxWidth
-    float contentWidth = 0
-    List<Renderable> elements = []
+    TextBlock        paragraph
+    float            maxWidth
+    float            contentWidth = 0
+    List<Renderable> elements     = []
 
     ParagraphLine(TextBlock paragraph, float maxWidth) {
         this.paragraph = paragraph
@@ -26,9 +26,13 @@ class ParagraphLine {
 
     float getContentHeight() {
         elements.collect {
-            if (it instanceof TextElement) { it.node.font.size }
-            else if (it instanceof ImageElement ) { it.node.height }
-            else { 0 }
+            if (it instanceof TextElement) {
+                it.node.font.size
+            } else if (it instanceof ImageElement) {
+                it.node.height
+            } else {
+                0
+            }
         }.max() ?: paragraph.font.size
     }
 
@@ -39,11 +43,9 @@ class ParagraphLine {
     float getLineSpacing() {
         if (paragraph.lineSpacing) {
             paragraph.lineSpacing
-        }
-        else {
-            Font maxFont = elements
-                    .findAll { it instanceof TextElement }
-                    .max { it.node.font.size }?.node?.font ?: paragraph.font
+        } else {
+            Font maxFont = elements.findAll { it instanceof TextElement }
+                             .max { it.node.font.size }?.node?.font ?: paragraph.font
 
             BigDecimal lineHeight = PdfFont.getLineHeight(maxFont)
             Math.round((lineHeight * paragraph.lineSpacingMultiplier) - lineHeight)

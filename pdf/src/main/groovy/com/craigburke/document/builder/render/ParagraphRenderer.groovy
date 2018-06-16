@@ -24,19 +24,20 @@ import java.awt.image.BufferedImage
  * @author Craig Burke
  */
 class ParagraphRenderer implements Renderable {
+
     TextBlock node
 
     List<ParagraphLine> lines
 
-    private int parseStart = 0
+    private int parseStart  = 0
     private int linesParsed = 0
 
-    float renderedHeight = 0
-    private float startX
-    private float totalWidth
+            float   renderedHeight    = 0
+    private float   startX
+    private float   totalWidth
     private boolean parsedAndRendered = false
-    private boolean fullyRendered = false
-    private boolean fullyParsed = false
+    private boolean fullyRendered     = false
+    private boolean fullyParsed       = false
 
     ParagraphRenderer(TextBlock paragraph, PdfDocument pdfDocument, float startX, float totalWidth) {
         node = paragraph
@@ -55,7 +56,7 @@ class ParagraphRenderer implements Renderable {
     }
 
     int getParseEnd() {
-        int parseEnd = Math.max(0f, (parseStart + linesParsed - 1))
+        int parseEnd = (Math.max(0f, (parseStart + linesParsed - 1))).intValue()
         Math.min(lines.size() - 1, parseEnd)
     }
 
@@ -84,11 +85,10 @@ class ParagraphRenderer implements Renderable {
             linesParsed++
 
             if (parsedHeight > height) {
-                linesParsed = Math.max(0f, linesParsed - 1)
+                linesParsed = (Math.max(0f, linesParsed - 1)).intValue()
                 reachedEnd = true
                 fullyParsed = false
-            }
-            else if (line == lines.last()) {
+            } else if (line == lines.last()) {
                 reachedEnd = true
                 fullyParsed = true
             }
@@ -157,8 +157,7 @@ class ParagraphRenderer implements Renderable {
             if (element instanceof TextElement) {
                 renderTextElement(element as TextElement, line)
                 pdfDocument.x += element.width
-            }
-            else if (element instanceof ImageElement) {
+            } else if (element instanceof ImageElement) {
                 renderImageElement(element as ImageElement)
                 pdfDocument.x += element.node.width
             }
@@ -177,7 +176,7 @@ class ParagraphRenderer implements Renderable {
         float bottomY = pdfDocument.translateY(pdfDocument.y + line.contentHeight - line.lineSpacing)
 
         if (text.background) {
-            float height = line.contentHeight + line.lineSpacing
+            float height = (line.contentHeight + line.lineSpacing).floatValue()
             contentStream.setNonStrokingColor(*text.background.rgb)
             contentStream.addRect(startX, bottomY, element.width, height)
             contentStream.fill()
@@ -185,10 +184,10 @@ class ParagraphRenderer implements Renderable {
 
         if (text.font.underline) {
             float textBottom = pdfDocument.translateY(pdfDocument.y + line.contentHeight - (line.lineSpacing * 1.5f))
-            float endX = startX + element.width
+            float endX = (startX + element.width).floatValue()
 
             contentStream.setStrokingColor(*font.color.rgb)
-            float lineWidth = ((font.size as Float) / 16f)
+            float lineWidth = ((font.size as Float) / 16f).floatValue()
             contentStream.setLineWidth(lineWidth)
 
             contentStream.moveTo(startX, textBottom)
@@ -227,8 +226,7 @@ class ParagraphRenderer implements Renderable {
         PDImageXObject img
         if (element.node.type == ImageType.PNG) {
             img = LosslessFactory.createFromImage(pdfDocument.pdDocument, bufferedImage)
-        }
-        else {
+        } else {
             img = JPEGFactory.createFromImage(pdfDocument.pdDocument, bufferedImage)
         }
 

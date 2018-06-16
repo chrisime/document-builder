@@ -54,17 +54,21 @@ class ParagraphParser {
                         String text = getTextUntilBreak(remainingText, pdfFont, font.size, currentLine.remainingWidth)
                         int nextPosition = text.size()
                         remainingText = remainingText[nextPosition..-1].trim()
-                        int elementWidth = pdfFont.getStringWidth(text) / 1000 * font.size
+                        int elementWidth = (pdfFont.getStringWidth(text) / 1000 * font.size).intValue()
                         currentLine.contentWidth += elementWidth
 
-                        currentLine.elements << new TextElement(pdfFont: pdfFont, text: text,
-                                node: node, width: elementWidth)
+                        currentLine.elements << new TextElement(pdfFont: pdfFont,
+                                                                text: text,
+                                                                node: node,
+                                                                width: elementWidth)
 
                         currentLine = new ParagraphLine(paragraph, maxLineWidth)
                         chunkLines << currentLine
                     } else {
-                        currentLine.elements << new TextElement(pdfFont: pdfFont, text: remainingText,
-                                node: node, width: textWidth)
+                        currentLine.elements << new TextElement(pdfFont: pdfFont,
+                                                                text: remainingText,
+                                                                node: node,
+                                                                width: textWidth.intValue())
                         remainingText = ''
                         currentLine.contentWidth += textWidth
                     }
@@ -83,7 +87,7 @@ class ParagraphParser {
         chunkLines
     }
 
-    private static String getTextUntilBreak(String text, PDFont font, BigDecimal fontSize, BigDecimal width) {
+    private static String getTextUntilBreak(String text, PDFont font, BigDecimal fontSize, float width) {
         String result = ''
         String previousResult = ''
         boolean spaceBreakpointFound = false
@@ -96,7 +100,7 @@ class ParagraphParser {
             result += (wordIndex == 0 ? '' : ' ') + words[wordIndex]
             resultWidth = getTextWidth(result, font, fontSize)
 
-            if (resultWidth == width) {
+            if (resultWidth.floatValue() == width) {
                 spaceBreakpointFound = true
                 break
             } else if (resultWidth < width) {
