@@ -1,6 +1,7 @@
 package com.craigburke.document.builder
 
-import com.craigburke.document.core.Document
+import com.craigburke.document.core.dom.attribute.EmbeddedFont
+import com.craigburke.document.core.dom.block.Document
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.pdmodel.PDPageContentStream
@@ -10,46 +11,52 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle
  * Document node element
  * @author Craig Burke
  */
-class PdfDocument {
+class PdfDocument extends Document {
 
-    float x = 0
-    float y = 0
-
-    Document   document
-    PDDocument pdDocument
-    int        pageNumber = 0
+    float x          = 0
+    float y          = 0
+    int   pageNumber = 0
 
     PDPageContentStream contentStream
-    List<PDPage>        pages = []
 
-    PdfDocument(Document document) {
-        pdDocument = new PDDocument()
-        this.document = document
+    final PDDocument   pdDocument
+    final List<PDPage> pages
+
+    PdfDocument() {
+        System.setProperty('sun.java2d.cmm', 'sun.java2d.cmm.kcms.KcmsServiceProvider')
+        this.pdDocument = new PDDocument()
+        this.pages = []
         addPage()
     }
 
     void scrollToStartPosition() {
-        x = document.margin.left
-        y = document.margin.top
+        x = document.margin.left ?: 0.0F
+        y = document.margin.top ?: 0.0F
     }
 
     int getPageBottomY() {
         currentPage.mediaBox.height - document.margin.bottom
     }
 
-    private static PDRectangle getRectangle(float width, float height) {
+    void saveAndClosePdf(OutputStream out) {
+        contentStream?.close()
+        if (out)
+            pdDocument.save(out)
+        pdDocument?.close()
+    }
+
+    private static PDRectangle getRectangle(BigDecimal width, BigDecimal height) {
         new PDRectangle(width.floatValue(), height.floatValue())
     }
 
     void addPage() {
-        def newPage = new PDPage().with {
-            setMediaBox(getRectangle(document.width, document.height))
+        PDPage newPage = new PDPage().with {
+            mediaBox = getRectangle(document.width, document.height)
             it
         }
 
-        if (document.isLandscape()) {
+        if (document.isLandscape())
             newPage.setRotation(90)
-        }
 
         pages << newPage
         pageNumber++
@@ -66,7 +73,7 @@ class PdfDocument {
     }
 
     void setPageNumber(int value) {
-        this.pageNumber = value
+        pageNumber = value
         contentStream?.close()
         contentStream = new PDPageContentStream(pdDocument, currentPage, true, true)
         scrollToStartPosition()
@@ -93,6 +100,13 @@ class PdfDocument {
 
     float getRemainingPageHeight() {
         (currentPage.mediaBox.height - document.margin.bottom) - y
+    }
+
+    @Override
+    Document addToEmbeddedFonts(EmbeddedFont embeddedFont) {
+        super.addToEmbeddedFonts(embeddedFont)
+        PdfFont.addFont(pdDocument, embeddedFont)
+        this
     }
 
 }

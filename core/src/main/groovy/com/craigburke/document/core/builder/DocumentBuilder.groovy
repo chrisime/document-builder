@@ -1,186 +1,114 @@
 package com.craigburke.document.core.builder
 
-import com.craigburke.document.core.BackgroundAssignable
-import com.craigburke.document.core.BaseNode
-import com.craigburke.document.core.BlockNode
-import com.craigburke.document.core.Bookmarkable
-import com.craigburke.document.core.Cell
-import com.craigburke.document.core.EmbeddedFont
-import com.craigburke.document.core.Heading
-import com.craigburke.document.core.Stylable
-import com.craigburke.document.core.TextBlock
-import com.craigburke.document.core.UnitCategory
+import groovy.transform.CompileStatic
+import ox.softeng.document.core.dsl.CreateApi
 
-import com.craigburke.document.core.factory.CreateFactory
-import com.craigburke.document.core.factory.DocumentFactory
-import com.craigburke.document.core.factory.HeadingFactory
-import com.craigburke.document.core.factory.LinkFactory
-import com.craigburke.document.core.factory.PageBreakFactory
-import com.craigburke.document.core.factory.ParagraphFactory
-import com.craigburke.document.core.factory.LineBreakFactory
-import com.craigburke.document.core.factory.ImageFactory
-import com.craigburke.document.core.factory.TextFactory
-import com.craigburke.document.core.factory.TableFactory
-import com.craigburke.document.core.factory.RowFactory
-import com.craigburke.document.core.factory.CellFactory
-
-import com.craigburke.document.core.Document
-import com.craigburke.document.core.Font
+import com.craigburke.document.core.dom.PageBreak
+import com.craigburke.document.core.dom.attribute.HeaderFooterOptions
+import com.craigburke.document.core.dom.block.BlockNode
+import com.craigburke.document.core.dom.block.Document
+import com.craigburke.document.core.unit.UnitCategory
+import groovy.transform.TypeChecked
+import groovy.transform.TypeCheckingMode
 
 /**
  * Document Builder base class
  * @author Craig Burke
  */
-abstract class DocumentBuilder extends FactoryBuilderSupport {
+@CompileStatic
+abstract class DocumentBuilder<T extends Document> implements CreateApi {
 
-    Document document
+    T document
     OutputStream out
     RenderState renderState = RenderState.PAGE
-    protected List<String> imageFileNames = []
+    Closure headerClosure
+    Closure footerClosure
+    Map templateMap = [:]
 
     DocumentBuilder(OutputStream out) {
-        super(true)
         this.out = out
     }
 
-    DocumentBuilder(File file) {
-        super(true)
-        this.out = new FileOutputStream(file)
+    abstract T createDocument(Map attributes)
+
+    abstract void writeDocument()
+
+    void close() {
+        out.close()
     }
 
-    Font getFont() {
-        current.font
+    @TypeChecked(TypeCheckingMode.SKIP)
+    DocumentBuilder create(@DelegatesTo(CreateApi) Closure closure) {
+        try {
+            use(UnitCategory) {
+                closure.delegate = this
+                closure.call()
+
+                checkPageCount()
+                writeDocument()
+            }
+        } finally {
+            close()
+        }
+        this
     }
 
-    def invokeMethod(String name, args) {
+    /**
+     * Use too create the document but not actually write it. Call builder.writeDocument to complete
+     */
+    @TypeChecked(TypeCheckingMode.SKIP)
+    DocumentBuilder createWithoutWrite(@DelegatesTo(CreateApi) Closure closure) {
         use(UnitCategory) {
-            super.invokeMethod(name, args)
+
+            closure.delegate = this
+            closure.call()
+
+            checkPageCount()
+        }
+        this
+    }
+
+    @TypeChecked(TypeCheckingMode.SKIP)
+    BlockNode buildHeaderNode(HeaderFooterOptions headerFooterOptions) {
+        use(UnitCategory) {
+            buildNode(headerFooterOptions, headerClosure)
         }
     }
 
-    void setNodeProperties(BaseNode node, Map attributes, String nodeKey) {
-        String[] templateKeys = getTemplateKeys(node, nodeKey)
-        def nodeProperties = []
-
-        templateKeys.each { String key ->
-            if (document.template && document.templateMap.containsKey(key)) {
-                nodeProperties << document.templateMap[key]
-            }
-        }
-        nodeProperties << attributes
-
-        if (node instanceof Stylable) {
-            setNodeFont(node, nodeProperties)
-        }
-        if (node instanceof BlockNode) {
-            setBlockProperties(node, nodeProperties)
-        }
-        if (node instanceof BackgroundAssignable) {
-            setNodeBackground(node, nodeProperties)
+    @TypeChecked(TypeCheckingMode.SKIP)
+    BlockNode buildFooterNode(HeaderFooterOptions headerFooterOptions) {
+        use(UnitCategory) {
+            buildNode(headerFooterOptions, footerClosure)
         }
     }
 
-    protected void setNodeFont(Stylable node, nodeProperties) {
-        node.font = (node instanceof Document) ? new Font() : node.parent.font.clone()
-        node.font.size = (node instanceof Heading) ? null : node.font.size
-        nodeProperties.each {
-            node.font << it.font
-        }
-        if (node instanceof Heading && !node.font.size) {
-            node.font.size = document.font.size * Heading.FONT_SIZE_MULTIPLIERS[node.level - 1]
-        }
+    void checkPageCount() {
+        Integer numberOfPageBreaks = document.children.count {it instanceof PageBreak}.toInteger()
+        document.pageCount = Math.max(numberOfPageBreaks + 1, document.pageCount ?: 0)
     }
 
-    protected void setBlockProperties(BlockNode node, nodeProperties) {
-        node.margin = node.getClass().defaultMargin.clone()
-        nodeProperties.each {
-            node.margin << it.margin
-            if (it.border) {
-                node.border << it.border
-            }
+    @Override
+    void callClosure(Closure closure, Object delegate, int resolveStrategy = Closure.DELEGATE_FIRST) {
+        if (closure) {
+            closure.resolveStrategy = resolveStrategy
+            closure.delegate = delegate
+            closure.call()
         }
     }
 
-    protected void setNodeBackground(BackgroundAssignable node, nodeProperties) {
-        nodeProperties.each { Map properties ->
-            if (properties.containsKey('background')) {
-                node.background = properties.background
-            }
-            boolean canCascade = (!(node.parent instanceof TextBlock) && (node.parent instanceof BackgroundAssignable))
-            if (canCascade && !node.background && node.parent.background) {
-                node.background = "#${node.parent.background.hex}"
-            }
-        }
+    @Override
+    DocumentBuilder getBuilder() {
+        this
     }
 
-    static String[] getTemplateKeys(BaseNode node, String nodeKey) {
-        def keys = [nodeKey]
-        if (node instanceof Heading) {
-            keys << "heading${node.level}"
-        }
-        if (node instanceof Stylable && node.style) {
-            keys << "${nodeKey}.${node.style}"
-            if (node instanceof Heading) {
-                keys << "heading${node.level}.${node.style}"
-            }
-        }
-        keys
+    protected BlockNode buildNode(HeaderFooterOptions headerFooterOptions, Closure closure) {
+        HeaderFooterDocument document = new HeaderFooterDocument()
+        document.templateMap = templateMap
+        document.setNodeProperties([:])
+        closure.resolveStrategy = Closure.DELEGATE_FIRST
+        closure.delegate = document
+        closure.call(headerFooterOptions)
+        document.children.first() as BlockNode
     }
 
-    TextBlock getColumnParagraph(Cell column) {
-        if (column.children && column.children[0] instanceof TextBlock) {
-            column.children[0]
-        } else {
-            TextBlock paragraph = new TextBlock(font: column.font.clone(), parent: column, align: column.align)
-            setNodeProperties(paragraph, [margin: [top: 0, left: 0, bottom: 0, right: 0]], 'paragraph')
-            column.children << paragraph
-            paragraph
-        }
-    }
-
-    void addFont(Map params, String location) {
-        EmbeddedFont embeddedFont = new EmbeddedFont(params)
-        embeddedFont.file = new File(location)
-        addFont(embeddedFont)
-    }
-
-    void addFont(EmbeddedFont embeddedFont) {
-        document.embeddedFonts << embeddedFont
-        if (addEmbeddedFont) {
-            addEmbeddedFont(embeddedFont)
-        }
-    }
-
-    abstract void initializeDocument(Document document, OutputStream out)
-
-    abstract void writeDocument(Document document, OutputStream out)
-
-    def addPageBreakToDocument
-    def onTextBlockComplete
-    def onTableComplete
-    def addEmbeddedFont
-
-    def registerObjectFactories() {
-        registerFactory('create', new CreateFactory())
-        registerFactory('document', new DocumentFactory())
-        registerFactory('pageBreak', new PageBreakFactory())
-        registerFactory('paragraph', new ParagraphFactory())
-        registerFactory('lineBreak', new LineBreakFactory())
-        registerFactory('image', new ImageFactory())
-        registerFactory('text', new TextFactory())
-        registerFactory('link', new LinkFactory())
-        registerFactory('table', new TableFactory())
-        registerFactory('row', new RowFactory())
-        registerFactory('cell', new CellFactory())
-        registerFactory('heading1', new HeadingFactory())
-        registerFactory('heading2', new HeadingFactory())
-        registerFactory('heading3', new HeadingFactory())
-        registerFactory('heading4', new HeadingFactory())
-        registerFactory('heading5', new HeadingFactory())
-        registerFactory('heading6', new HeadingFactory())
-    }
-}
-
-enum RenderState {
-    PAGE, HEADER, FOOTER, CUSTOM
 }

@@ -1,9 +1,9 @@
 dependencies {
-    compile project(':core')
+    compile project(':core-document-builder')
+    testCompile project(':test')
     compile 'org.apache.pdfbox:pdfbox:2.0.9'
 }
 
 project.ext {
-    artifactId = 'pdf'
     description = 'Groovy PDF Document Builder'
 }

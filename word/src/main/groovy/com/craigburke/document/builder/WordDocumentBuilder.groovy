@@ -1,151 +1,149 @@
 package com.craigburke.document.builder
 
-import com.craigburke.document.core.Link
-
-import static com.craigburke.document.core.UnitUtil.pointToEigthPoint
-import static com.craigburke.document.core.UnitUtil.pointToEmu
-import static com.craigburke.document.core.UnitUtil.pointToTwip
-import static com.craigburke.document.core.UnitUtil.pointToHalfPoint
-
-import com.craigburke.document.core.HeaderFooterOptions
-import com.craigburke.document.core.Heading
-import com.craigburke.document.core.builder.RenderState
-import com.craigburke.document.core.BlockNode
-import com.craigburke.document.core.Cell
-import com.craigburke.document.core.Row
-import com.craigburke.document.core.Font
-import com.craigburke.document.core.Image
-import com.craigburke.document.core.LineBreak
-import com.craigburke.document.core.PageBreak
-import com.craigburke.document.core.TextBlock
-import com.craigburke.document.core.Table
-import com.craigburke.document.core.Text
-import groovy.transform.InheritConstructors
-
 import com.craigburke.document.core.builder.DocumentBuilder
-import com.craigburke.document.core.Document
+import com.craigburke.document.core.builder.RenderState
+import com.craigburke.document.core.dom.Image
+import com.craigburke.document.core.dom.LineBreak
+import com.craigburke.document.core.dom.PageBreak
+import com.craigburke.document.core.dom.attribute.Font
+import com.craigburke.document.core.dom.attribute.HeaderFooterOptions
+import com.craigburke.document.core.dom.attribute.TextBlockType
+import com.craigburke.document.core.dom.block.BlockNode
+import com.craigburke.document.core.dom.block.Paragraph
+import com.craigburke.document.core.dom.block.Table
+import com.craigburke.document.core.dom.block.table.Cell
+import com.craigburke.document.core.dom.block.table.Row
+import com.craigburke.document.core.dom.text.Heading
+import com.craigburke.document.core.dom.text.Link
+import com.craigburke.document.core.dom.text.Text
+import com.craigburke.document.core.dom.text.TextNode
+import groovy.transform.InheritConstructors
+import groovy.util.logging.Slf4j
+
+import java.time.OffsetDateTime
+
+import static com.craigburke.document.core.unit.UnitUtil.pointToEigthPoint
+import static com.craigburke.document.core.unit.UnitUtil.pointToEmu
+import static com.craigburke.document.core.unit.UnitUtil.pointToHalfPoint
+import static com.craigburke.document.core.unit.UnitUtil.pointToTwip
 
 /**
  * Builder for Word documents
  * @author Craig Burke
  */
+@Slf4j
 @InheritConstructors
-class WordDocumentBuilder extends DocumentBuilder {
+class WordDocumentBuilder extends DocumentBuilder<WordDocument> {
 
     private static final String PAGE_NUMBER_PLACEHOLDER = '##pageNumber##'
-    private static final Map RUN_TEXT_OPTIONS = ['xml:space': 'preserve']
+    private static final Map    RUN_TEXT_OPTIONS        = ['xml:space': 'preserve']
 
-    void initializeDocument(Document document, OutputStream out) {
-        document.element = new WordDocument(out)
+    @Override
+    WordDocument createDocument(Map attributes) {
+        document = new WordDocument(attributes)
+        document
     }
 
-    WordDocument getWordDocument() {
-        document.element
-    }
+    @Override
+    void writeDocument() {
+        document.configureForWriting(out)
+        HeaderFooterOptions headerFooterOptions = new HeaderFooterOptions(pageNumber: PAGE_NUMBER_PLACEHOLDER,
+                                                                          pageCount: document.pageCount,
+                                                                          dateGenerated: OffsetDateTime.now())
 
-    void writeDocument(Document document, OutputStream out) {
-        def headerFooterOptions = new HeaderFooterOptions(
-                pageNumber: PAGE_NUMBER_PLACEHOLDER,
-                pageCount: document.pageCount,
-                dateGenerated: new Date()
-        )
-
-        def header = renderHeader(headerFooterOptions)
-        def footer = renderFooter(headerFooterOptions)
+        Map header = renderHeader(headerFooterOptions)
+        Map footer = renderFooter(headerFooterOptions)
 
         renderState = RenderState.PAGE
-        wordDocument.generateDocument { builder ->
+        document.generateDocument { baseMarkupBuilderDocument ->
             w.document {
                 w.body {
                     document.children.each { child ->
-                        if (child instanceof TextBlock) {
-                            addParagraph(builder, child)
+                        if (child instanceof TextBlockType) {
+                            addTextBlockType(baseMarkupBuilderDocument, child)
                         } else if (child instanceof PageBreak) {
-                            addPageBreak(builder)
+                            addPageBreak(baseMarkupBuilderDocument)
                         } else if (child instanceof Table) {
-                            addTable(builder, child)
+                            addTable(baseMarkupBuilderDocument, child)
+                        } else {
+                            log.warn('Unknown child in document: {}', child.getClass())
                         }
                     }
                     w.sectPr {
                         w.pgSz('w:h': pointToTwip(document.height),
-                                'w:w': pointToTwip(document.width),
-                                'w:orient': document.orientation
-                        )
-                        w.pgMar('w:bottom': pointToTwip(document.margin.bottom),
-                                'w:top': pointToTwip(document.margin.top),
-                                'w:right': pointToTwip(document.margin.right),
-                                'w:left': pointToTwip(document.margin.left),
-                                'w:footer': pointToTwip(footer ? footer.node.margin.bottom : 0),
-                                'w:header': pointToTwip(header ? header.node.margin.top : 0)
-                        )
-                        if (header) {
+                               'w:w': pointToTwip(document.width),
+                               'w:orient': document.orientation)
+                        w.pgMar('w:bottom': pointToTwip(document.margin.bottom).toInteger(),
+                                'w:top': pointToTwip(document.margin.top).toInteger(),
+                                'w:right': pointToTwip(document.margin.right).toInteger(),
+                                'w:left': pointToTwip(document.margin.left).toInteger(),
+                                'w:footer': pointToTwip(footer ? footer.node.margin.bottom : 0.0),
+                                'w:header': pointToTwip(header ? header.node.margin.top : 0.0))
+
+                        if (header)
                             w.headerReference('r:id': header.id, 'w:type': 'default')
-                        }
-                        if (footer) {
+                        if (footer)
                             w.footerReference('r:id': footer.id, 'w:type': 'default')
-                        }
                     }
                 }
             }
         }
 
         renderState = RenderState.CUSTOM
-        document.element.write()
+        document.write()
     }
 
-    def renderHeader(HeaderFooterOptions options) {
-        def header = [:]
-        if (document.header) {
+    private Map renderHeader(HeaderFooterOptions options) {
+        Map headerMap = [:]
+        if (headerClosure) {
             renderState = RenderState.HEADER
-            header.node = document.header(options)
-            header.id = wordDocument.generateDocumentPart(BasicDocumentPartTypes.HEADER) { builder ->
+            headerMap.node = buildHeaderNode(options)
+            headerMap.id = document.generateDocumentPart(BasicDocumentPartTypes.HEADER) { builder ->
                 w.hdr {
-                    renderHeaderFooterNode(builder, header.node as BlockNode)
+                    renderHeaderFooterNode(builder, headerMap.node as BlockNode)
                 }
             }
         }
-        header
+        headerMap
     }
 
-    def renderFooter(HeaderFooterOptions options) {
-        def footer = [:]
-        if (document.footer) {
+    private Map renderFooter(HeaderFooterOptions options) {
+        Map footerMap = [:]
+        if (footerClosure) {
             renderState = RenderState.FOOTER
-            footer.node = document.footer(options)
-            footer.id = wordDocument.generateDocumentPart(BasicDocumentPartTypes.FOOTER) { builder ->
+            footerMap.node = buildFooterNode(options)
+            footerMap.id = document.generateDocumentPart(BasicDocumentPartTypes.FOOTER) { builder ->
                 w.hdr {
-                    renderHeaderFooterNode(builder, footer.node as BlockNode)
+                    renderHeaderFooterNode(builder, footerMap.node as BlockNode)
                 }
             }
         }
-        footer
+        footerMap
     }
 
-    void renderHeaderFooterNode(builder, BlockNode node) {
-        if (node instanceof TextBlock) {
-            addParagraph(builder, node)
-        } else {
-            addTable(builder, node)
+    private void renderHeaderFooterNode(baseMarkupBuilderDocument, BlockNode node) {
+        if (node instanceof Paragraph) {
+            addTextBlockType(baseMarkupBuilderDocument, node)
+        } else if (node instanceof Table) {
+            addTable(baseMarkupBuilderDocument, node)
         }
-
     }
 
-    void addPageBreak(builder) {
-        builder.w.p {
+    private void addPageBreak(baseMarkupBuilderDocument) {
+        baseMarkupBuilderDocument.w.p {
             w.r {
                 w.br('w:type': 'page')
             }
         }
     }
 
-    int calculateSpacingAfter(BlockNode node) {
-        int totalSpacing
+    private int calculateSpacingAfter(TextBlockType node) {
+        BigDecimal totalSpacing = 0.0G
 
         switch (renderState) {
             case RenderState.PAGE:
                 totalSpacing = node.margin.bottom
-
-                def items = node.parent.children
+                List items = (node.parent as BlockNode).children
                 int index = items.findIndexOf { it == node }
 
                 if (index != items.size() - 1) {
@@ -162,17 +160,19 @@ class WordDocumentBuilder extends DocumentBuilder {
 
             case RenderState.FOOTER:
                 totalSpacing = 0
+            case RenderState.CUSTOM:
+                break
         }
         pointToTwip(totalSpacing)
     }
 
-    int calculatedSpacingBefore(BlockNode node) {
-        int totalSpacing
+    private int calculateSpacingBefore(TextBlockType node) {
+        BigDecimal totalSpacing = 0.0G
 
         switch (renderState) {
             case RenderState.PAGE:
                 totalSpacing = node.margin.top
-                def items = node.parent.children
+                List items = (node.parent as BlockNode).children
                 int index = items.findIndexOf { it == node }
                 if (index > 0) {
                     def previousSibling = items[index - 1]
@@ -194,91 +194,87 @@ class WordDocumentBuilder extends DocumentBuilder {
         pointToTwip(totalSpacing)
     }
 
-    void addParagraph(builder, TextBlock paragraph) {
-
-        builder.w.p {
+    private void addTextBlockType(baseMarkupBuilderDocument, TextBlockType textBlockType) {
+        baseMarkupBuilderDocument.w.p {
             w.pPr {
-                if (paragraph.background) {
-                    w.shd('w:fill': paragraph.background.hex, 'w:color': paragraph.background.hex, 'w:val': 'solid')
-                }
-                if (paragraph instanceof Heading && stylesEnabled) {
-                    w.pStyle 'w:val': "Heading${paragraph.level}"
-                }
+                if (textBlockType.background)
+                    w.shd('w:fill': textBlockType.background.hex, 'w:color': textBlockType.background.hex,
+                          'w:val': 'solid')
+                if (textBlockType instanceof Heading && stylesEnabled)
+                    w.pStyle 'w:val': "Heading${textBlockType.level}"
 
-                String lineRule = (paragraph.lineSpacing) ? 'exact' : 'auto'
-                BigDecimal lineValue = (paragraph.lineSpacing) ?
-                        pointToTwip(paragraph.lineSpacing) : (paragraph.lineSpacingMultiplier * 240)
+                String lineRule = textBlockType.lineSpacing ? 'exact' : 'auto'
+                BigDecimal lineValue = textBlockType.lineSpacing ? pointToTwip(textBlockType.lineSpacing)
+                                                                 : (textBlockType.lineSpacingMultiplier * 240)
 
-                w.spacing(
-                        'w:before': calculatedSpacingBefore(paragraph),
-                        'w:after': calculateSpacingAfter(paragraph),
-                        'w:lineRule': lineRule,
-                        'w:line': lineValue
-                )
-                w.ind(
-                        'w:start': pointToTwip(paragraph.margin.left),
-                        'w:left': pointToTwip(paragraph.margin.left),
-                        'w:right': pointToTwip(paragraph.margin.right),
-                        'w:end': pointToTwip(paragraph.margin.right)
-                )
-                w.jc('w:val': paragraph.align.value)
+                w.spacing('w:before': calculateSpacingBefore(textBlockType),
+                          'w:after': calculateSpacingAfter(textBlockType),
+                          'w:lineRule': lineRule,
+                          'w:line': lineValue)
+                w.ind('w:start': pointToTwip(textBlockType.margin.left.toInteger()),
+                      'w:left': pointToTwip(textBlockType.margin.left.toInteger()),
+                      'w:right': pointToTwip(textBlockType.margin.right.toInteger()),
+                      'w:end': pointToTwip(textBlockType.margin.right.toInteger()))
+                w.jc('w:val': textBlockType.align.value)
 
-                if (paragraph instanceof Heading) {
-                    w.outlineLvl('w:val': "${paragraph.level - 1}")
-                }
+                if (textBlockType instanceof Heading)
+                    w.outlineLvl('w:val': "${textBlockType.level - 1}")
             }
 
             String paragraphLinkId = UUID.randomUUID()
-            if (paragraph.ref) {
-                w.bookmarkStart('w:id': paragraphLinkId, 'w:name': paragraph.ref)
-            }
-            paragraph.children.each { child ->
-                switch (child.getClass()) {
-                    case Link:
-                        addLink(builder, child)
-                        break
-                    case Text:
-                        addTextRun(builder, child)
-                        break
-                    case Image:
-                        addImageRun(builder, child)
-                        break
-                    case LineBreak:
-                        addLineBreakRun(builder)
-                        break
+            if (textBlockType.ref)
+                w.bookmarkStart('w:id': paragraphLinkId, 'w:name': textBlockType.ref)
+
+            if (textBlockType instanceof Paragraph) {
+                textBlockType.children.each { child ->
+                    switch (child.getClass()) {
+                        case Link:
+                            addLink(baseMarkupBuilderDocument, child as Link)
+                            break
+                        case Text:
+                            addTextRun(baseMarkupBuilderDocument, child as Text)
+                            break
+                        case Image:
+                            addImageRun(baseMarkupBuilderDocument, child as Image)
+                            break
+                        case LineBreak:
+                            addLineBreakRun(baseMarkupBuilderDocument)
+                            break
+                    }
                 }
+            } else if (textBlockType instanceof Heading) {
+                addTextRun(baseMarkupBuilderDocument, textBlockType)
             }
-            if (paragraph.ref) {
+
+            if (textBlockType.ref)
                 w.bookmarkEnd('w:id': paragraphLinkId)
-            }
         }
     }
 
-    protected boolean isStylesEnabled() {
+    private static boolean isStylesEnabled() {
         false
     }
 
-    void addLink(builder, Link link) {
+    private void addLink(baseMarkupBuilderDocument, Link link) {
         if (link.url.startsWith('#')) {
-            builder.w.hyperlink('w:anchor': link.url[1..-1]) {
-                addTextRun(builder, link as Text)
+            baseMarkupBuilderDocument.w.hyperlink('w:anchor': link.url[1..-1]) {
+                addTextRun(baseMarkupBuilderDocument, link)
             }
-        }
-        else {
-            String id = wordDocument.addLink(link.url, currentDocumentPart)
-            builder.w.hyperlink('r:id': id) {
-                addTextRun(builder, link as Text)
+        } else {
+            String id = document.addLink(link.url, currentDocumentPart)
+            baseMarkupBuilderDocument.w.hyperlink('r:id': id) {
+                addTextRun(baseMarkupBuilderDocument, link)
             }
         }
     }
 
-    void addLineBreakRun(builder) {
-        builder.w.r {
+    private void addLineBreakRun(baseMarkupBuilderDocument) {
+        baseMarkupBuilderDocument.w.r {
             w.br()
         }
     }
 
-    DocumentPartType getCurrentDocumentPart() {
+    private DocumentPartType getCurrentDocumentPart() {
         switch (renderState) {
             case RenderState.PAGE:
                 BasicDocumentPartTypes.DOCUMENT
@@ -289,26 +285,28 @@ class WordDocumentBuilder extends DocumentBuilder {
             case RenderState.FOOTER:
                 BasicDocumentPartTypes.FOOTER
                 break
+            default:
+                throw new IllegalStateException("Unexpected render state!")
         }
     }
 
-    void addImageRun(builder, Image image) {
-        String blipId = document.element.addImage(image.name, image.data, currentDocumentPart)
+    private void addImageRun(baseMarkupBuilderDocument, Image image) {
+        String blipId = document.addImage(image.hashName, image.data, currentDocumentPart)
 
-        int widthInEmu = pointToEmu(image.width)
-        int heightInEmu = pointToEmu(image.height)
-        String imageDescription = "Image: ${image.name}"
+        BigDecimal widthInEmu = pointToEmu(image.width)
+        BigDecimal heightInEmu = pointToEmu(image.height)
+        String imageDescription = "Image: ${image.hashName}"
 
-        builder.w.r {
+        baseMarkupBuilderDocument.w.r {
             w.drawing {
                 wp.inline(distT: 0, distR: 0, distB: 0, distL: 0) {
                     wp.extent(cx: widthInEmu, cy: heightInEmu)
-                    wp.docPr(id: 1, name: imageDescription, descr: image.name)
+                    wp.docPr(id: 1, name: imageDescription, descr: image.hashName)
                     a.graphic {
                         a.graphicData(uri: 'http://schemas.openxmlformats.org/drawingml/2006/picture') {
                             pic.pic {
                                 pic.nvPicPr {
-                                    pic.cNvPr(id: 0, name: imageDescription, descr: image.name)
+                                    pic.cNvPr(id: 0, name: imageDescription, descr: image.hashName)
                                     pic.cNvPicPr {
                                         a.picLocks(noChangeAspect: 'true')
                                     }
@@ -336,18 +334,16 @@ class WordDocumentBuilder extends DocumentBuilder {
         }
     }
 
-    void addTable(builder, Table table) {
-        builder.w.tbl {
+    private void addTable(baseMarkupBuilderDocument, Table table) {
+        baseMarkupBuilderDocument.w.tbl {
             w.tblPr {
                 w.tblW('w:w': pointToTwip(table.width), 'w:type': 'dxa')
                 w.tblBorders {
                     def properties = ['top', 'right', 'bottom', 'left', 'insideH', 'insideV']
                     properties.each { String property ->
-                        w."${property}"(
-                                'w:sz': pointToEigthPoint(table.border.size),
-                                'w:color': table.border.color.hex,
-                                'w:val': (table.border.size == 0 ? 'none' : 'single')
-                        )
+                        w."${property}"('w:sz': pointToEigthPoint(table.border.size),
+                                        'w:color': table.border.color.hex,
+                                        'w:val': (table.border.size == 0 ? 'none' : 'single'))
                     }
                 }
             }
@@ -355,7 +351,7 @@ class WordDocumentBuilder extends DocumentBuilder {
             if (table.columns) {
                 w.tblGrid {
                     List<BigDecimal> columnWidths = table.computeColumnWidths()
-                    for (BigDecimal columnWidth in columnWidths) {
+                    columnWidths.each { BigDecimal columnWidth ->
                         w.gridCol('w:w': pointToTwip(columnWidth).longValue())
                     }
                 }
@@ -365,9 +361,9 @@ class WordDocumentBuilder extends DocumentBuilder {
                 w.tr {
                     row.children.each { Cell column ->
                         if (column.rowsSpanned == 0) {
-                            addColumn(builder, column)
+                            addColumn(baseMarkupBuilderDocument, column)
                         } else {
-                            addMergeColumn(builder)
+                            addMergeColumn(baseMarkupBuilderDocument)
                         }
                         column.rowsSpanned++
                     }
@@ -376,46 +372,44 @@ class WordDocumentBuilder extends DocumentBuilder {
         }
     }
 
-    void addColumn(builder, Cell column) {
-        Table table = column.parent.parent
+    private void addColumn(baseMarkupBuilderDocument, Cell column) {
+        Table table = column.table
 
-        builder.w.tc {
+        baseMarkupBuilderDocument.w.tc {
             w.tcPr {
                 w.vAlign('w:val': 'top')
-                w.tcW('w:w': pointToTwip(column.width - (table.padding * 2)), 'w:type': 'dxa')
+                w.tcW('w:w': pointToTwip(column.width - (table.padding * 2)).toInteger(), 'w:type': 'dxa')
                 w.tcMar {
-                    w.top('w:w': pointToTwip(table.padding), 'w:type': 'dxa')
-                    w.bottom('w:w': pointToTwip(table.padding), 'w:type': 'dxa')
-                    w.left('w:w': pointToTwip(table.padding), 'w:type': 'dxa')
-                    w.right('w:w': pointToTwip(table.padding), 'w:type': 'dxa')
+                    w.top('w:w': pointToTwip(table.padding).toInteger(), 'w:type': 'dxa')
+                    w.bottom('w:w': pointToTwip(table.padding).toInteger(), 'w:type': 'dxa')
+                    w.left('w:w': pointToTwip(table.padding).toInteger(), 'w:type': 'dxa')
+                    w.right('w:w': pointToTwip(table.padding).toInteger(), 'w:type': 'dxa')
                 }
-                if (column.background) {
+                if (column.background)
                     w.shd('w:val': 'clear', 'w:color': 'auto', 'w:fill': column.background.hex)
-                }
-                if (column.colspan > 1) {
+                if (column.colspan > 1)
                     w.gridSpan('w:val': column.colspan)
-                }
-                if (column.rowspan > 1) {
+                if (column.rowspan > 1)
                     w.vMerge('w:val': 'restart')
-                }
             }
+
             column.children.each {
-                if (it instanceof TextBlock) {
-                    addParagraph(builder, it)
+                if (it instanceof Paragraph) {
+                    addTextBlockType(baseMarkupBuilderDocument, it)
                 } else {
-                    addTable(builder, it)
+                    addTable(baseMarkupBuilderDocument, it as Table)
                     w.p()
                 }
             }
-            if (!column.children) {
+
+            if (!column.children)
                 w.p()
-            }
         }
 
     }
 
-    void addMergeColumn(builder) {
-        builder.w.tc {
+    private void addMergeColumn(baseMarkupBuilderDocument) {
+        baseMarkupBuilderDocument.w.tc {
             w.tcPr {
                 w.vMerge()
             }
@@ -423,16 +417,15 @@ class WordDocumentBuilder extends DocumentBuilder {
         }
     }
 
-    void addTextRun(builder, Text text) {
+    private void addTextRun(baseMarkupBuilderDocument, TextNode text) {
         String id = UUID.randomUUID()
 
-        if (text.ref) {
-            builder.w.bookmarkStart('w:id': id, 'w:name': text.ref)
-        }
+        if (text.ref)
+            baseMarkupBuilderDocument.w.bookmarkStart('w:id': id, 'w:name': text.ref)
 
         Font font = text.font
 
-        builder.w.r {
+        baseMarkupBuilderDocument.w.r {
             w.rPr {
                 w.rFonts('w:ascii': font.family)
                 if (font.bold) {
@@ -448,27 +441,25 @@ class WordDocumentBuilder extends DocumentBuilder {
                     w.shd('w:fill': text.background.hex, 'w:color': text.background.hex, 'w:val': 'solid')
                 }
                 w.color('w:val': font.color.hex)
-                w.sz('w:val': pointToHalfPoint(font.size))
+                w.sz('w:val': pointToHalfPoint(font.size).toInteger())
             }
-            if (renderState == RenderState.PAGE) {
+
+            if (renderState == RenderState.PAGE)
                 w.t(text.value, RUN_TEXT_OPTIONS)
-            } else {
-                parseHeaderFooterText(builder, text.value)
-            }
+            else
+                parseHeaderFooterText(baseMarkupBuilderDocument, text.value)
         }
 
-        if (text.ref) {
-            builder.w.bookmarkEnd('w:id': id)
-        }
+        if (text.ref)
+            baseMarkupBuilderDocument.w.bookmarkEnd('w:id': id)
     }
 
-    static void parseHeaderFooterText(builder, String text) {
-        def textParts = text.split(PAGE_NUMBER_PLACEHOLDER)
+    private static void parseHeaderFooterText(baseMarkupBuilderDocument, String text) {
+        String[] textParts = text.split(PAGE_NUMBER_PLACEHOLDER)
         textParts.eachWithIndex { String part, int index ->
-            if (index != 0) {
-                builder.w.pgNum()
-            }
-            builder.w.t(part, RUN_TEXT_OPTIONS)
+            if (index != 0)
+                baseMarkupBuilderDocument.w.pgNum()
+            baseMarkupBuilderDocument.w.t(part, RUN_TEXT_OPTIONS)
         }
     }
 

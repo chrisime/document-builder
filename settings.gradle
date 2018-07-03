@@ -1,1 +1,5 @@
-include 'core', 'pdf', 'word'
+include 'core', 'pdf', 'word', 'test'
+
+project(':core').name = 'core-document-builder'
+project(':pdf').name = 'pdf-document-builder'
+project(':word').name = 'word-document-builder'

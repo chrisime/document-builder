@@ -15,3 +15,6 @@ idea/
 *.project
 *.settings
 bin/
+out
+*.docx
+*.pdf

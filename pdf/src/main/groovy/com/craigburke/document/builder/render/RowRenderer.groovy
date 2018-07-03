@@ -1,9 +1,9 @@
 package com.craigburke.document.builder.render
 
 import com.craigburke.document.builder.PdfDocument
-import com.craigburke.document.core.Cell
-import com.craigburke.document.core.Row
-import com.craigburke.document.core.Table
+import com.craigburke.document.core.dom.block.Table
+import com.craigburke.document.core.dom.block.table.Cell
+import com.craigburke.document.core.dom.block.table.Row
 import org.apache.pdfbox.pdmodel.PDPageContentStream
 
 /**
@@ -12,19 +12,22 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream
  */
 class RowRenderer implements Renderable {
 
-    Row row
-    List<CellRenderer> cellRenderers = []
-    float renderedHeight = 0
+    private final Row row
+
+    final List<CellRenderer> cellRenderers
+
+    float renderedHeight = 0.0F
 
     RowRenderer(Row row, PdfDocument pdfDocument, float startX) {
         this.row = row
         this.startX = startX
         this.pdfDocument = pdfDocument
+        this.cellRenderers = []
 
         Table table = row.parent
-        float columnX = (startX + table.border.size).floatValue()
+        BigDecimal columnX = startX + table.border.size
         row.children.each { Cell column ->
-            cellRenderers << new CellRenderer(column, pdfDocument, columnX)
+            cellRenderers << new CellRenderer(column, pdfDocument, columnX.floatValue())
             columnX += column.width + table.border.size
         }
     }
@@ -43,17 +46,15 @@ class RowRenderer implements Renderable {
     }
 
     float getParsedHeight() {
-        float parsedHeight = (float) cellRenderers*.parsedHeight.max() ?: 0.0F
-        if (fullyParsed && parsedHeight > 0) {
+        float parsedHeight = cellRenderers*.currentHeight.max() ?: 0.0F as float
+        if (fullyParsed && parsedHeight > 0)
             parsedHeight += table.border.size
-        }
         parsedHeight
     }
 
     void renderElement(float startY) {
-        if (parsedHeight == 0) {
+        if (parsedHeight == 0)
             return
-        }
 
         renderBackgrounds(startY)
         renderBorders(startY)
@@ -71,12 +72,11 @@ class RowRenderer implements Renderable {
 
     private void renderBackgrounds(float startY) {
         float backgroundStartY = (startY + parsedHeight).floatValue()
-        if (!firstRow) {
+        if (!firstRow)
             backgroundStartY += tableBorderOffset
-        }
-        if (!fullyParsed) {
+
+        if (!fullyParsed)
             backgroundStartY -= table.border.size
-        }
 
         float translatedStartY = pdfDocument.translateY(backgroundStartY)
         PDPageContentStream contentStream = pdfDocument.contentStream
@@ -87,9 +87,10 @@ class RowRenderer implements Renderable {
                 boolean isLastColumn = (column == column.parent.children.last())
                 contentStream.setNonStrokingColor(*column.background.rgb)
                 float startX = (columnElement.startX - tableBorderOffset).floatValue()
-                float width = (column.width + (isLastColumn ? table.border.size : tableBorderOffset)).floatValue()
-                float height = (parsedHeight - (fullyParsed ? 0 : tableBorderOffset)).floatValue()
-                height += ((fullyParsed && !onFirstPage) ? table.border.size : 0)
+                float width = (column.width.floatValue() +
+                               (isLastColumn ? table.border.size.floatValue() : tableBorderOffset)).floatValue()
+                float height = ((parsedHeight - (fullyParsed ? 0 : tableBorderOffset)) +
+                                ((fullyParsed && !onFirstPage) ? table.border.size : 0.0F)).floatValue()
                 contentStream.addRect(startX, translatedStartY, width, height)
                 contentStream.fill()
             }
@@ -97,9 +98,8 @@ class RowRenderer implements Renderable {
     }
 
     private void renderBorders(float startY) {
-        if (!table.border.size) {
+        if (!table.border.size)
             return
-        }
 
         float translatedYTop = pdfDocument.translateY(startY - tableBorderOffset)
         float translatedYBottom = pdfDocument.translateY(startY + parsedHeight)
@@ -138,17 +138,17 @@ class RowRenderer implements Renderable {
     }
 
     private setBorderOptions(PDPageContentStream contentStream) {
-        def borderColor = table.border.color.rgb
+        List<Integer> borderColor = table.border.color.rgb
         contentStream.setStrokingColor(*borderColor)
         contentStream.setLineWidth(table.border.size)
     }
 
-    boolean isTopOfPage(float y) {
-        (y == pdfDocument.document.margin.top)
+    boolean isTopOfPage(Float y) {
+        y == pdfDocument.document.margin.top.toFloat()
     }
 
     boolean isFirstRow() {
-        (row == row.parent.children.first())
+        row == row.table.rows.first()
     }
 
 }

@@ -1,7 +1,9 @@
 package com.craigburke.document.builder
 
-import com.craigburke.document.builder.render.ParagraphRenderer
-import com.craigburke.document.core.TextBlock
+import com.craigburke.document.core.dom.block.Paragraph
+
+import com.craigburke.document.builder.render.TextBlockRenderer
+import com.craigburke.document.builder.test.RendererTestBase
 import spock.lang.Ignore
 import spock.lang.Shared
 
@@ -12,10 +14,10 @@ import spock.lang.Shared
 class ParagraphRendererSpec extends RendererTestBase {
 
     @Shared
-    ParagraphRenderer paragraphElement
+    TextBlockRenderer paragraphElement
 
     def setup() {
-        TextBlock paragraph = makeParagraph(3)
+        Paragraph paragraph = makeParagraph(3)
         paragraphElement = makeParagraphElement(paragraph)
     }
 

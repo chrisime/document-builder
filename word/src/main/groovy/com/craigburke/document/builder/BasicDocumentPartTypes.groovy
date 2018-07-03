@@ -1,9 +1,12 @@
 package com.craigburke.document.builder
 
+import groovy.transform.CompileStatic
+
 /**
  * Enum for the various types of document parts a relationship can exist in
  * @author Craig Burke
  */
+@CompileStatic
 enum BasicDocumentPartTypes implements DocumentPartType {
     ROOT('root', null, null),
 

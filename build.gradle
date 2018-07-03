@@ -14,14 +14,19 @@ project.ext {
     githubUrl = 'https://github.com/chrisime/document-builder'
 }
 
-allprojects {
+group = rootProject.group
+version = '1.0.0'
+
+subprojects {
+
+    group = rootProject.group
+    version = rootProject.version
+
     apply plugin: 'maven'
     apply plugin: 'groovy'
     apply plugin: 'idea'
     apply plugin: 'nebula.provided-base'
 
-    group = 'com.craigburke.document'
-    version = '0.6.0'
     targetCompatibility = 1.8
     sourceCompatibility = 1.8
 
@@ -30,19 +35,15 @@ allprojects {
         jcenter()
         mavenCentral()
     }
-
     dependencies {
-        provided 'org.codehaus.groovy:groovy-all:2.4.15'
-        testCompile 'org.spockframework:spock-core:1.0-groovy-2.4'
+        compile 'org.codehaus.groovy:groovy-all:2.4.15'
+        testCompile 'org.spockframework:spock-core:1.1-groovy-2.4'
         testCompile 'cglib:cglib-nodep:3.2.4'
         testCompile 'org.objenesis:objenesis:2.6'
+
+        compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+        runtime group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
     }
-
-}
-
-subprojects {
-    apply plugin: 'maven-publish'
-    apply plugin: 'com.jfrog.bintray'
 
     task sourcesJar(type: Jar) {
         classifier = 'sources'
@@ -55,7 +56,7 @@ subprojects {
     }
 
     task release {
-        dependsOn bintrayUpload, gitPublishCommit
+        dependsOn gitPublishCommit
     }
 
 }
@@ -70,14 +71,15 @@ asciidoctor {
     }
 
     attributes 'source-highlighter': 'prettify',
-            'docinfo1': ['version': project.version],
-            'imagesdir': 'images',
-            'stylesdir': 'css',
-            icons: 'font',
-            'toc': 'left',
-            version: project.version,
-            'projectUrl': 'https://github.com/chrisime/document-builder'
+               'docinfo1': ['version': project.version],
+               'imagesdir': 'images',
+               'stylesdir': 'css',
+               icons: 'font',
+               'toc': 'left',
+               version: project.version,
+               'projectUrl': 'https://github.com/chrisime/document-builder'
 }
+
 gitPublish {
     repoUri = "${project.githubUrl}.git".toString()
 

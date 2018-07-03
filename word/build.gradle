@@ -1,5 +1,6 @@
 dependencies {
-    compile project(':core')
+    compile project(':core-document-builder')
+    testCompile project(':test')
 
     testCompile "xml-apis:xml-apis:1.4.01"
     testCompile "org.apache.poi:poi:${'3.13'}"
@@ -8,6 +9,5 @@ dependencies {
 }
 
 project.ext {
-    artifactId = 'word'
     description = 'Groovy Word Document Builder'
 }

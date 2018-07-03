@@ -1,9 +1,9 @@
 package com.craigburke.document.builder.render
 
 import com.craigburke.document.builder.PdfDocument
-import com.craigburke.document.core.Cell
-import com.craigburke.document.core.Table
-import com.craigburke.document.core.TextBlock
+import com.craigburke.document.core.dom.block.Paragraph
+import com.craigburke.document.core.dom.block.Table
+import com.craigburke.document.core.dom.block.table.Cell
 
 /**
  * Rendering element for the cell node
@@ -12,25 +12,27 @@ import com.craigburke.document.core.TextBlock
 class CellRenderer implements Renderable {
 
     float currentRowHeight = 0
-    float renderedHeight = 0
+    float renderedHeight   = 0
 
-    Cell             cell
-    List<Renderable> childRenderers = []
+    final Cell cell
+
+    private final List<Renderable> childRenderers
 
     CellRenderer(Cell cell, PdfDocument pdfDocument, float startX) {
         this.cell = cell
-        this.startX = startX
         this.pdfDocument = pdfDocument
+        this.startX = startX
+        this.childRenderers = []
 
         Table table = cell.parent.parent
-        int renderWidth = cell.width - (table.padding * 2)
-        float childStartX = (startX + table.padding).floatValue()
+        BigDecimal renderWidth = cell.width - (table.padding * 2)
+        BigDecimal childStartX = startX + table.padding
         cell.children.each { child ->
-            if (child instanceof TextBlock) {
-                childRenderers << new ParagraphRenderer(child, pdfDocument, childStartX, renderWidth)
-            }
-            else if (child instanceof Table) {
-                childRenderers << new TableRenderer(child, pdfDocument, childStartX)
+            if (child instanceof Paragraph) {
+                childRenderers <<
+                new TextBlockRenderer(child, pdfDocument, childStartX.floatValue(), renderWidth.floatValue())
+            } else if (child instanceof Table) {
+                childRenderers << new TableRenderer(child, pdfDocument, childStartX.floatValue())
             }
         }
     }
@@ -51,14 +53,15 @@ class CellRenderer implements Renderable {
     }
 
     float getTotalHeight() {
-        (childRenderers*.totalHeight.sum() ?: 0f) + (padding * 2)
+        float childHeight = (childRenderers*.totalHeight.sum() ?: 0.0F) as float
+        childHeight + padding * 2
     }
 
     float getParsedHeight() {
         if (!childRenderers || !onLastRowspanRow) {
-            return 0
+            return 0.0F
         }
-        float parsedHeight = (childRenderers*.parsedHeight.sum() ?: 0f) as float
+        float parsedHeight = (childRenderers*.currentHeight.sum() ?: 0.0F) as float
 
         if (onFirstPage && parsedHeight) {
             parsedHeight += padding
@@ -82,8 +85,7 @@ class CellRenderer implements Renderable {
         }
         if (onLastRowspanRow) {
             childRenderers*.render(childY)
-        }
-        else {
+        } else {
             cell.rowspanHeight += currentRowHeight
             currentRowHeight = 0
         }

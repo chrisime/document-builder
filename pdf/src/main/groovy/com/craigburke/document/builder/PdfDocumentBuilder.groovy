@@ -1,115 +1,122 @@
 package com.craigburke.document.builder
 
-import com.craigburke.document.builder.render.ParagraphRenderer
+import com.craigburke.document.builder.render.Renderable
 import com.craigburke.document.builder.render.TableRenderer
-import com.craigburke.document.core.EmbeddedFont
-import com.craigburke.document.core.HeaderFooterOptions
-import com.craigburke.document.core.PageBreak
-import com.craigburke.document.core.builder.RenderState
-import groovy.transform.InheritConstructors
-import groovy.xml.MarkupBuilder
-
+import com.craigburke.document.builder.render.TextBlockRenderer
 import com.craigburke.document.core.builder.DocumentBuilder
-import com.craigburke.document.core.Document
-import com.craigburke.document.core.TextBlock
-import com.craigburke.document.core.Table
-import com.craigburke.document.core.Image
-
+import com.craigburke.document.core.builder.RenderState
+import com.craigburke.document.core.dom.PageBreak
+import com.craigburke.document.core.dom.attribute.HeaderFooterOptions
+import com.craigburke.document.core.dom.attribute.TextBlockType
+import com.craigburke.document.core.dom.block.BlockNode
+import com.craigburke.document.core.dom.block.Paragraph
+import com.craigburke.document.core.dom.block.Table
+import com.craigburke.document.core.dom.text.Heading
+import groovy.transform.InheritConstructors
+import groovy.util.logging.Slf4j
+import groovy.xml.MarkupBuilder
+import org.apache.pdfbox.pdmodel.PDDocumentCatalog
 import org.apache.pdfbox.pdmodel.common.PDMetadata
+
+import java.time.OffsetDateTime
 
 /**
  * Builder for PDF documents
  * @author Craig Burke
  */
+@Slf4j
 @InheritConstructors
-class PdfDocumentBuilder extends DocumentBuilder {
+class PdfDocumentBuilder extends DocumentBuilder<PdfDocument> {
 
-    PdfDocument pdfdocument
-
-    void initializeDocument(Document document, OutputStream out) {
-        pdfDocument = new PdfDocument(document)
-        pdfDocument.x = document.margin.left
-        pdfDocument.y = document.margin.top
-        document.element = pdfDocument
+    @Override
+    PdfDocument createDocument(Map attributes) {
+        document = new PdfDocument(attributes)
+        document
     }
 
-    def addEmbeddedFont = { EmbeddedFont embeddedFont ->
-        PdfFont.addFont(pdfDocument.pdDocument, embeddedFont)
-    }
+    @Override
+    void writeDocument() {
+        document.x = document.margin.left
+        document.y = document.margin.top
 
-    def addPageBreakToDocument = { PageBreak pageBreak, Document document ->
-        pdfDocument.addPage()
-    }
-
-    def onTextBlockComplete = { TextBlock paragraph ->
-        if (renderState == RenderState.PAGE && paragraph.parent instanceof Document) {
-            int pageWidth = document.width - document.margin.left - document.margin.right
-            int maxLineWidth = pageWidth - paragraph.margin.left - paragraph.margin.right
-            int renderStartX = document.margin.left + paragraph.margin.left
-
-            pdfDocument.x = renderStartX
-            pdfDocument.scrollDownPage(paragraph.margin.top)
-
-            ParagraphRenderer paragraphRenderer =
-                    new ParagraphRenderer(paragraph, pdfDocument, renderStartX, maxLineWidth)
-
-            while (!paragraphRenderer.fullyParsed) {
-                paragraphRenderer.parse(pdfDocument.remainingPageHeight)
-                paragraphRenderer.render(pdfDocument.y)
-                if (paragraphRenderer.fullyParsed) {
-                    pdfDocument.scrollDownPage(paragraphRenderer.renderedHeight)
-                } else {
-                    pdfDocument.addPage()
-                }
+        document.children.each { child ->
+            if (child instanceof TextBlockType) {
+                addTextBlockType(child)
+            } else if (child instanceof PageBreak) {
+                document.addPage()
+            } else if (child instanceof Table) {
+                addTable(child)
+            } else {
+                log.warn('Unknown child in document: {}', child.getClass())
             }
-            pdfDocument.scrollDownPage(paragraph.margin.bottom)
         }
-    }
 
-    def onTableComplete = { Table table ->
-        if (renderState == RenderState.PAGE) {
-            pdfDocument.x = table.margin.left + document.margin.left
-            pdfDocument.scrollDownPage(table.margin.top)
-            TableRenderer tableRenderer = new TableRenderer(table, pdfDocument, pdfDocument.x)
-            while (!tableRenderer.fullyParsed) {
-                tableRenderer.parse(pdfDocument.remainingPageHeight)
-                tableRenderer.render(pdfDocument.y)
-
-                if (tableRenderer.fullyParsed) {
-                    pdfDocument.scrollDownPage(tableRenderer.renderedHeight)
-                } else {
-                    pdfDocument.addPage()
-                }
-            }
-            pdfDocument.scrollDownPage(table.margin.bottom)
-        }
-    }
-
-    void writeDocument(Document document, OutputStream out) {
         addHeaderFooter()
         addMetadata()
 
-        pdfDocument.contentStream?.close()
-        pdfDocument.pdDocument.save(out)
-        pdfDocument.pdDocument.close()
+        document.saveAndClosePdf(out)
+    }
+
+    void addTextBlockType(TextBlockType textBlockType) {
+        if (renderState == RenderState.PAGE) {
+            BigDecimal pageWidth = document.width - document.margin.left - document.margin.right
+            BigDecimal maxLineWidth = pageWidth - textBlockType.margin.left - textBlockType.margin.right
+            BigDecimal renderStartX = document.margin.left + textBlockType.margin.left
+
+            document.x = renderStartX
+            document.scrollDownPage(textBlockType.margin.top)
+
+            TextBlockRenderer paragraphRenderer =
+              new TextBlockRenderer(textBlockType, document, renderStartX, maxLineWidth)
+
+            while (!paragraphRenderer.fullyParsed) {
+                paragraphRenderer.parse(document.remainingPageHeight)
+                paragraphRenderer.render(document.y)
+                if (paragraphRenderer.fullyParsed) {
+                    document.scrollDownPage(paragraphRenderer.renderedHeight)
+                } else {
+                    document.addPage()
+                }
+            }
+            document.scrollDownPage(textBlockType.margin.bottom)
+        }
+    }
+
+    void addTable(Table table) {
+        if (renderState == RenderState.PAGE) {
+            document.x = table.margin.left + document.margin.left
+            document.scrollDownPage(table.margin.top)
+            TableRenderer tableRenderer = new TableRenderer(table, document, document.x)
+            while (!tableRenderer.fullyParsed) {
+                tableRenderer.parse(document.remainingPageHeight)
+                tableRenderer.render(document.y)
+
+                if (tableRenderer.fullyParsed) {
+                    document.scrollDownPage(tableRenderer.renderedHeight)
+                } else {
+                    document.addPage()
+                }
+            }
+            document.scrollDownPage(table.margin.bottom)
+        }
     }
 
     private void addHeaderFooter() {
-        int pageCount = pdfDocument.pages.size()
-        def options = new HeaderFooterOptions(pageCount: pageCount, dateGenerated: new Date())
+        int pageCount = document.pages.size()
+        HeaderFooterOptions options = new HeaderFooterOptions(pageCount: pageCount, dateGenerated: OffsetDateTime.now())
 
         (1..pageCount).each { int pageNumber ->
-            pdfDocument.pageNumber = pageNumber
+            document.pageNumber = pageNumber
             options.pageNumber = pageNumber
 
-            if (document.header) {
+            if (headerClosure) {
                 renderState = RenderState.HEADER
-                def header = document.header(options)
+                BlockNode header = buildHeaderNode(options)
                 renderHeaderFooter(header)
             }
-            if (document.footer) {
+            if (footerClosure) {
                 renderState = RenderState.FOOTER
-                def footer = document.footer(options)
+                BlockNode footer = buildFooterNode(options)
                 renderHeaderFooter(footer)
             }
         }
@@ -117,24 +124,20 @@ class PdfDocumentBuilder extends DocumentBuilder {
         renderState = RenderState.PAGE
     }
 
-    private void renderHeaderFooter(headerFooter) {
+    private void renderHeaderFooter(BlockNode headerFooter) {
         float startX = document.margin.left + headerFooter.margin.left
         float startY
 
         if (renderState == RenderState.HEADER) {
             startY = headerFooter.margin.top
         } else {
-            float pageBottom = pdfDocument.pageBottomY + document.margin.bottom
-            startY = pageBottom - getElementHeight(headerFooter) - headerFooter.margin.bottom
+            float pageBottom = document.pageBottomY + document.margin.bottom
+            startY = (pageBottom - getElementHeight(headerFooter) - headerFooter.margin.bottom).floatValue()
         }
 
-        def renderer
-        if (headerFooter instanceof TextBlock) {
-            int pageWidth = document.width - document.margin.left - document.margin.right
-            renderer = new ParagraphRenderer(headerFooter, pdfDocument, startX, pageWidth)
-        } else {
-            renderer = new TableRenderer(headerFooter as Table, pdfDocument, startX)
-        }
+        Renderable renderer =
+          headerFooter instanceof Paragraph ? new TextBlockRenderer(headerFooter, document, startX, document.width)
+                                            : new TableRenderer(headerFooter as Table, document, startX)
 
         renderer.parse(document.height)
         renderer.render(startY)
@@ -143,10 +146,10 @@ class PdfDocumentBuilder extends DocumentBuilder {
     private float getElementHeight(element) {
         float width = document.width - document.margin.right - document.margin.left
 
-        if (element instanceof TextBlock) {
-            new ParagraphRenderer(element, pdfDocument, 0, width).totalHeight
+        if (element instanceof Paragraph) {
+            new TextBlockRenderer(element, document, 0, width).totalHeight
         } else if (element instanceof Table) {
-            new TableRenderer(element, pdfDocument, 0).totalHeight
+            new TableRenderer(element, document, 0).totalHeight
         } else {
             0
         }
@@ -154,56 +157,59 @@ class PdfDocumentBuilder extends DocumentBuilder {
 
     private void addMetadata() {
         ByteArrayOutputStream xmpOut = new ByteArrayOutputStream()
-        def xml = new MarkupBuilder(xmpOut.newWriter())
+        MarkupBuilder xml = new MarkupBuilder(xmpOut.newWriter())
 
         xml.document(marginTop: "${document.margin.top}", marginBottom: "${document.margin.bottom}",
-                marginLeft: "${document.margin.left}", marginRight: "${document.margin.right}") {
+                     marginLeft: "${document.margin.left}", marginRight: "${document.margin.right}") {
 
             delegate = xml
             resolveStrategy = Closure.DELEGATE_FIRST
 
             document.children.each { child ->
-                switch (child.getClass()) {
-                    case TextBlock:
-                        addParagraphToMetadata(delegate, child)
-                        break
-                    case Table:
-                        addTableToMetadata(delegate, child)
-                        break
+                if (child instanceof Paragraph) {
+                    addParagraphToMetadata(delegate, child)
+                } else if (child instanceof Heading) {
+                    addHeadingToMetadata(delegate, child)
+                } else if (child instanceof Table) {
+                    addTableToMetadata(delegate, child)
                 }
             }
         }
 
-        def catalog = pdfDocument.pdDocument.documentCatalog
+        PDDocumentCatalog catalog = document.pdDocument.documentCatalog
         InputStream inputStream = new ByteArrayInputStream(xmpOut.toByteArray())
 
-        PDMetadata metadata = new PDMetadata(pdfDocument.pdDocument, inputStream)
+        PDMetadata metadata = new PDMetadata(document.pdDocument, inputStream)
         catalog.metadata = metadata
     }
 
-    private static void addParagraphToMetadata(builder, TextBlock paragraphNode) {
-        builder.paragraph(marginTop: "${paragraphNode.margin.top}",
-                marginBottom: "${paragraphNode.margin.bottom}",
-                marginLeft: "${paragraphNode.margin.left}",
-                marginRight: "${paragraphNode.margin.right}") {
-            paragraphNode?.children.findAll { it.class == Image }.each {
-                builder.image()
+    private static void addHeadingToMetadata(xml, Heading heading) {
+        xml.heading(marginTop: "${heading.margin.top}",
+                    marginBottom: "${heading.margin.bottom}",
+                    marginLeft: "${heading.margin.left}",
+                    marginRight: "${heading.margin.right}")
+    }
+
+    private static void addParagraphToMetadata(xml, Paragraph paragraphNode) {
+        xml.paragraph(marginTop: "${paragraphNode.margin.top}",
+                      marginBottom: "${paragraphNode.margin.bottom}",
+                      marginLeft: "${paragraphNode.margin.left}",
+                      marginRight: "${paragraphNode.margin.right}") {
+            paragraphNode.getAllImages().each {
+                xml.image()
             }
         }
     }
 
-    private void addTableToMetadata(builder, Table tableNode) {
-
-        builder.table(columns: tableNode.columnCount, width: tableNode.width, borderSize: tableNode.border.size) {
-
-            delegate = builder
+    private void addTableToMetadata(xml, Table tableNode) {
+        xml.table(columns: tableNode.columnCount, width: tableNode.width, borderSize: tableNode.border.size) {
+            delegate = xml
             resolveStrategy = Closure.DELEGATE_FIRST
 
-            tableNode.children.each {
-                def cells = it.children
+            tableNode.rows.each { rowNode ->
                 row {
-                    cells.each {
-                        cell(width: "${it.width ?: 0}")
+                    rowNode.cells.each { cellNode ->
+                        cell(width: "${cellNode.width ?: 0}")
                     }
                 }
             }
