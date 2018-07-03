@@ -14,13 +14,10 @@ project.ext {
     githubUrl = 'https://github.com/chrisime/document-builder'
 }
 
-group = rootProject.group
-version = '1.0.0'
-
 subprojects {
 
     group = rootProject.group
-    version = rootProject.version
+    version = '1.0.0'
 
     apply plugin: 'maven'
     apply plugin: 'groovy'
