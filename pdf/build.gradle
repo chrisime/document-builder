@@ -1,7 +1,7 @@
 dependencies {
     compile project(':core-document-builder')
     testCompile project(':test')
-    compile 'org.apache.pdfbox:pdfbox:2.0.9'
+    compile 'org.apache.pdfbox:pdfbox:2.0.13'
 }
 
 project.ext {

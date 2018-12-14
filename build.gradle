@@ -90,5 +90,5 @@ gitPublish {
 gitPublishCommit.dependsOn asciidoctor
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '4.8'
+    gradleVersion = '4.10.2'
 }
